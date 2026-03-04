@@ -201,6 +201,7 @@ function UserMenu() {
   const menuItems = [
     { icon: <User size={16} />, label: 'Profile', href: `/profile/${user.id}` },
     { icon: user.role === 'admin' ? <ShieldStar size={16} /> : <SquaresFour size={16} />, label: dashboardLabel, href: dashboardLink },
+    ...((user as any).is_super_admin ? [{ icon: <ShieldStar size={16} weight="fill" />, label: 'Super Admin', href: '/super' }] : []),
     { icon: <Gear size={16} />, label: 'Settings', href: '/settings' },
   ].filter((item, index, self) =>
     // If multiple items point to the same profile/dashboard, only keep the first one

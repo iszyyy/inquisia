@@ -1,4 +1,4 @@
-import React, { useState } from 'react'
+import React, { useState, useEffect } from 'react'
 import { Link, useNavigate, useSearchParams } from 'react-router'
 import { Eye, EyeSlash, WarningCircle } from 'phosphor-react'
 import { motion } from 'motion/react'
@@ -135,10 +135,14 @@ function FloatingInput({ id, label, type = 'text', value, onChange, error, autoC
 // ─── Login form ───────────────────────────────────────────────────────────────
 
 export function LoginPage() {
-  const { login } = useSession()
+  const { login, user, isLoading } = useSession()
   const navigate = useNavigate()
   const [searchParams] = useSearchParams()
   const returnUrl = searchParams.get('redirect') || '/'
+
+  useEffect(() => {
+    if (!isLoading && user) navigate(returnUrl, { replace: true })
+  }, [user, isLoading, navigate, returnUrl])
 
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')

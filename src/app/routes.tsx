@@ -26,7 +26,15 @@ const AdminProjectsPage = lazy(() => import('./pages/admin/AdminProjectsPage').t
 const AdminSupervisorsPage = lazy(() => import('./pages/admin/AdminSupervisorsPage').then((m) => ({ default: m.AdminSupervisorsPage })))
 const AdminDepartmentsPage = lazy(() => import('./pages/admin/AdminDepartmentsPage').then((m) => ({ default: m.AdminDepartmentsPage })))
 const AdminCategoriesPage = lazy(() => import('./pages/admin/AdminCategoriesPage').then((m) => ({ default: m.AdminCategoriesPage })))
-const AdminUpdatePage = lazy(() => import('./pages/admin/AdminUpdatePage').then((m) => ({ default: m.AdminUpdatePage })))
+
+// Super Admin
+const SuperAdminLayout = lazy(() => import('./pages/super/SuperAdminPages').then((m) => ({ default: m.SuperAdminLayout })))
+const SuperAnalyticsPage = lazy(() => import('./pages/super/SuperAdminPages').then((m) => ({ default: m.SuperAnalyticsPage })))
+const SuperUsersPage = lazy(() => import('./pages/super/SuperAdminPages').then((m) => ({ default: m.SuperUsersPage })))
+const SuperFlagsPage = lazy(() => import('./pages/super/SuperAdminPages').then((m) => ({ default: m.SuperFlagsPage })))
+const SuperSettingsPage = lazy(() => import('./pages/super/SuperAdminPages').then((m) => ({ default: m.SuperSettingsPage })))
+const SuperAuditPage = lazy(() => import('./pages/super/SuperAdminPages').then((m) => ({ default: m.SuperAuditPage })))
+const SuperMonitorPage = lazy(() => import('./pages/super/SuperAdminPages').then((m) => ({ default: m.SuperMonitorPage })))
 
 // ─── Loading fallback ─────────────────────────────────────────────────────────
 
@@ -50,28 +58,39 @@ export const router = createBrowserRouter([
     Component: RootLayout,
     children: [
       { index: true, element: <HomePage /> },
-      { path: 'login',       element: <Lazy><LoginPage /></Lazy> },
-      { path: 'register',    element: <Lazy><RegisterPage /></Lazy> },
-      { path: 'projects',    element: <Lazy><BrowsePage /></Lazy> },
+      { path: 'login', element: <Lazy><LoginPage /></Lazy> },
+      { path: 'register', element: <Lazy><RegisterPage /></Lazy> },
+      { path: 'projects', element: <Lazy><BrowsePage /></Lazy> },
       { path: 'projects/:id', element: <Lazy><ProjectDetailPage /></Lazy> },
       { path: 'profile/:id', element: <Lazy><ProfilePage /></Lazy> },
-      { path: 'upload',      element: <Lazy><UploadPage /></Lazy> },
-      { path: 'dashboard',   element: <Lazy><DashboardPage /></Lazy> },
-      { path: 'elara',       element: <Lazy><ElaraPage /></Lazy> },
-      { path: 'settings',    element: <Lazy><SettingsPage /></Lazy> },
-      { path: 'bookmarks',   element: <Lazy><BookmarksPage /></Lazy> },
+      { path: 'upload', element: <Lazy><UploadPage /></Lazy> },
+      { path: 'dashboard', element: <Lazy><DashboardPage /></Lazy> },
+      { path: 'elara', element: <Lazy><ElaraPage /></Lazy> },
+      { path: 'settings', element: <Lazy><SettingsPage /></Lazy> },
+      { path: 'bookmarks', element: <Lazy><BookmarksPage /></Lazy> },
       { path: 'danger-zone', element: <Lazy><DangerZonePage /></Lazy> },
       {
         path: 'admin',
         element: <Lazy><AdminLayout /></Lazy>,
         children: [
-          { index: true,              element: <Lazy><AdminPage /></Lazy> },
-          { path: 'users',            element: <Lazy><AdminUsersPage /></Lazy> },
-          { path: 'projects',         element: <Lazy><AdminProjectsPage /></Lazy> },
-          { path: 'supervisors',      element: <Lazy><AdminSupervisorsPage /></Lazy> },
-          { path: 'departments',      element: <Lazy><AdminDepartmentsPage /></Lazy> },
-          { path: 'ai-categories',    element: <Lazy><AdminCategoriesPage /></Lazy> },
-          { path: 'update',           element: <Lazy><AdminUpdatePage /></Lazy> },
+          { index: true, element: <Lazy><AdminPage /></Lazy> },
+          { path: 'users', element: <Lazy><AdminUsersPage /></Lazy> },
+          { path: 'projects', element: <Lazy><AdminProjectsPage /></Lazy> },
+          { path: 'supervisors', element: <Lazy><AdminSupervisorsPage /></Lazy> },
+          { path: 'departments', element: <Lazy><AdminDepartmentsPage /></Lazy> },
+          { path: 'ai-categories', element: <Lazy><AdminCategoriesPage /></Lazy> },
+        ],
+      },
+      {
+        path: 'super',
+        element: <Lazy><SuperAdminLayout /></Lazy>,
+        children: [
+          { index: true, element: <Lazy><SuperAnalyticsPage /></Lazy> },
+          { path: 'users', element: <Lazy><SuperUsersPage /></Lazy> },
+          { path: 'flags', element: <Lazy><SuperFlagsPage /></Lazy> },
+          { path: 'settings', element: <Lazy><SuperSettingsPage /></Lazy> },
+          { path: 'audit', element: <Lazy><SuperAuditPage /></Lazy> },
+          { path: 'monitor', element: <Lazy><SuperMonitorPage /></Lazy> },
         ],
       },
       { path: '*', element: <Lazy><NotFoundPage /></Lazy> },

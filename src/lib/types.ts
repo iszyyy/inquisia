@@ -30,6 +30,7 @@ export interface User {
   department_id: string | null
   is_verified: boolean
   is_active: boolean
+  is_super_admin: boolean
   account_status: AccountStatus
   status_reason: string | null
   created_at: string

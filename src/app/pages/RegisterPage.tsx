@@ -140,8 +140,12 @@ function FloatingSelect({
 }
 
 export function RegisterPage() {
-  const { login } = useSession()
+  const { login, user, isLoading } = useSession()
   const navigate = useNavigate()
+
+  useEffect(() => {
+    if (!isLoading && user) navigate('/', { replace: true })
+  }, [user, isLoading, navigate])
 
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
