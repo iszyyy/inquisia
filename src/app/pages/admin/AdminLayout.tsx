@@ -1,16 +1,17 @@
 import React, { useEffect } from 'react'
 import { Link, Outlet, useLocation, useNavigate } from 'react-router'
-import { ChartBar, Users, FolderOpen, GraduationCap, Buildings, Robot } from 'phosphor-react'
+import { ChartBar, Users, FolderOpen, GraduationCap, Buildings, ArrowClockwise } from 'phosphor-react'
 import { useSession } from '../../../context/SessionContext'
 import { ElaraLogo } from '../../components/ui/ElaraLogo'
 
 const NAV_ITEMS = [
-  { icon: <ChartBar size={18} />, label: 'Overview', href: '/admin' },
-  { icon: <Users size={18} />, label: 'Users', href: '/admin/users' },
-  { icon: <FolderOpen size={18} />, label: 'Projects', href: '/admin/projects' },
-  { icon: <GraduationCap size={18} />, label: 'Supervisors', href: '/admin/supervisors' },
-  { icon: <Buildings size={18} />, label: 'Departments', href: '/admin/departments' },
+  { icon: <ChartBar size={18} />,        label: 'Overview',      href: '/admin' },
+  { icon: <Users size={18} />,           label: 'Users',         href: '/admin/users' },
+  { icon: <FolderOpen size={18} />,      label: 'Projects',      href: '/admin/projects' },
+  { icon: <GraduationCap size={18} />,   label: 'Supervisors',   href: '/admin/supervisors' },
+  { icon: <Buildings size={18} />,       label: 'Departments',   href: '/admin/departments' },
   { icon: <ElaraLogo className="w-4 h-4" />, label: 'AI Categories', href: '/admin/ai-categories' },
+  { icon: <ArrowClockwise size={18} />,  label: 'Update',        href: '/admin/update' },
 ]
 
 export function AdminLayout() {
@@ -33,7 +34,8 @@ export function AdminLayout() {
       {/* Sidebar */}
       <aside className="w-56 flex-shrink-0 hidden md:flex flex-col border-r border-[#E5E7EB] dark:border-[#1C1C1C] bg-white dark:bg-[#101010]">
         <div className="p-4 sticky top-16">
-          <p className="text-[11px] font-semibold text-[#9CA3AF] uppercase tracking-wider mb-3 px-3" style={{ fontFamily: 'var(--font-body)' }}>
+          <p className="text-[11px] font-semibold text-[#9CA3AF] uppercase tracking-wider mb-3 px-3"
+            style={{ fontFamily: 'var(--font-body)' }}>
             Admin Panel
           </p>
           <nav className="space-y-0.5">
