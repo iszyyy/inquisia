@@ -802,7 +802,7 @@ export function DashboardPage() {
   const navigate = useNavigate()
 
   useEffect(() => {
-    if (!isLoading && !user) navigate('/login?return=/dashboard')
+    if (!isLoading && !user) navigate('/login?redirect=%2Fdashboard')
     if (!isLoading && user?.role === 'admin') navigate('/admin')
     if (!isLoading && user?.role === 'public') navigate(`/profile/${user.id}`)
   }, [user, isLoading, navigate])

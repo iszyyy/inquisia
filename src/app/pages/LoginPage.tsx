@@ -3,6 +3,7 @@ import { Link, useNavigate, useSearchParams } from 'react-router'
 import { Eye, EyeSlash, WarningCircle } from 'phosphor-react'
 import { motion } from 'motion/react'
 import { useSession } from '../../context/SessionContext'
+import { getDefaultRouteForUser, getSafeRedirect } from '../../lib/auth'
 import { authApi } from '../../lib/api'
 import { toast } from 'sonner'
 import { InquisiaLogo } from '../components/ui/InquisiaLogo'
@@ -138,7 +139,7 @@ export function LoginPage() {
   const { login } = useSession()
   const navigate = useNavigate()
   const [searchParams] = useSearchParams()
-  const returnUrl = searchParams.get('redirect') || '/'
+  const redirectParam = searchParams.get('redirect') ?? searchParams.get('return')
 
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
@@ -158,7 +159,7 @@ export function LoginPage() {
     if (res.success) {
       login(res.data)
       toast.success('Welcome back!')
-      navigate(returnUrl, { replace: true })
+      navigate(getSafeRedirect(redirectParam, getDefaultRouteForUser(res.data)), { replace: true })
     } else {
       setError(res.error || 'Invalid email or password. Please try again.')
     }
@@ -223,10 +224,10 @@ export function LoginPage() {
             autoComplete="current-password"
           />
 
-          <div className="flex justify-end">
-            <Link to="/forgot-password" className="text-[13px] text-[#5C6370] hover:text-[#0066FF] transition-colors" style={{ fontFamily: 'var(--font-body)' }}>
-              Forgot password?
-            </Link>
+          <div className="rounded-2xl border border-[#E5E7EB] dark:border-[#1C1C1C] bg-[#F7F8FA] dark:bg-[#181818] px-4 py-3">
+            <p className="text-[12px] text-[#5C6370] dark:text-[#8B8FA8]" style={{ fontFamily: 'var(--font-body)' }}>
+              Need password help? Use the backend reset flow when available, or contact your department admin for supervised demo accounts.
+            </p>
           </div>
 
           <button

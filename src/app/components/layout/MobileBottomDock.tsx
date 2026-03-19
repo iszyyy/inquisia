@@ -55,8 +55,8 @@ export function MobileBottomDock() {
     return {
       icon: <SquaresFour size={20} weight="regular" />,
       activeIcon: <SquaresFour size={20} weight="fill" />,
-      label: 'Dashboard',
-      href: '/dashboard',
+      label: user.role === 'admin' ? 'Admin' : 'Dashboard',
+      href: user.role === 'admin' ? '/admin' : '/dashboard',
     }
   }
 

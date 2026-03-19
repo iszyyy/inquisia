@@ -2,8 +2,7 @@ import React, { lazy, Suspense } from 'react'
 import { createBrowserRouter } from 'react-router'
 import { RootLayout } from './components/layout/RootLayout'
 import { HomePage } from './pages/HomePage'
-
-// ─── Lazy-loaded pages ────────────────────────────────────────────────────────
+import { GuestOnlyRoute, ProtectedRoute } from './components/auth/RouteGuards'
 
 const LoginPage = lazy(() => import('./pages/LoginPage').then((m) => ({ default: m.LoginPage })))
 const RegisterPage = lazy(() => import('./pages/RegisterPage').then((m) => ({ default: m.RegisterPage })))
@@ -18,7 +17,6 @@ const SettingsPage = lazy(() => import('./pages/SettingsPage').then((m) => ({ de
 const BookmarksPage = lazy(() => import('./pages/BookmarksPage').then((m) => ({ default: m.BookmarksPage })))
 const DangerZonePage = lazy(() => import('./pages/DangerZonePage').then((m) => ({ default: m.DangerZonePage })))
 
-// Admin
 const AdminLayout = lazy(() => import('./pages/admin/AdminLayout').then((m) => ({ default: m.AdminLayout })))
 const AdminPage = lazy(() => import('./pages/admin/AdminPage').then((m) => ({ default: m.AdminPage })))
 const AdminUsersPage = lazy(() => import('./pages/admin/AdminUsersPage').then((m) => ({ default: m.AdminUsersPage })))
@@ -26,8 +24,6 @@ const AdminProjectsPage = lazy(() => import('./pages/admin/AdminProjectsPage').t
 const AdminSupervisorsPage = lazy(() => import('./pages/admin/AdminSupervisorsPage').then((m) => ({ default: m.AdminSupervisorsPage })))
 const AdminDepartmentsPage = lazy(() => import('./pages/admin/AdminDepartmentsPage').then((m) => ({ default: m.AdminDepartmentsPage })))
 const AdminCategoriesPage = lazy(() => import('./pages/admin/AdminCategoriesPage').then((m) => ({ default: m.AdminCategoriesPage })))
-
-// ─── Loading fallback ─────────────────────────────────────────────────────────
 
 function PageLoader() {
   return (
@@ -41,28 +37,47 @@ function Lazy({ children }: { children: React.ReactNode }) {
   return <Suspense fallback={<PageLoader />}>{children}</Suspense>
 }
 
-// ─── Router ───────────────────────────────────────────────────────────────────
-
 export const router = createBrowserRouter([
   {
     path: '/',
     Component: RootLayout,
     children: [
       { index: true, element: <HomePage /> },
-      { path: 'login', element: <Lazy><LoginPage /></Lazy> },
-      { path: 'register', element: <Lazy><RegisterPage /></Lazy> },
+      {
+        path: 'login',
+        element: <Lazy><GuestOnlyRoute><LoginPage /></GuestOnlyRoute></Lazy>,
+      },
+      {
+        path: 'register',
+        element: <Lazy><GuestOnlyRoute><RegisterPage /></GuestOnlyRoute></Lazy>,
+      },
       { path: 'projects', element: <Lazy><BrowsePage /></Lazy> },
       { path: 'projects/:id', element: <Lazy><ProjectDetailPage /></Lazy> },
       { path: 'profile/:id', element: <Lazy><ProfilePage /></Lazy> },
-      { path: 'upload', element: <Lazy><UploadPage /></Lazy> },
-      { path: 'dashboard', element: <Lazy><DashboardPage /></Lazy> },
+      {
+        path: 'upload',
+        element: <Lazy><ProtectedRoute allowedRoles={['student']}><UploadPage /></ProtectedRoute></Lazy>,
+      },
+      {
+        path: 'dashboard',
+        element: <Lazy><ProtectedRoute allowedRoles={['student', 'supervisor']}><DashboardPage /></ProtectedRoute></Lazy>,
+      },
       { path: 'elara', element: <Lazy><ElaraPage /></Lazy> },
-      { path: 'settings', element: <Lazy><SettingsPage /></Lazy> },
-      { path: 'bookmarks', element: <Lazy><BookmarksPage /></Lazy> },
-      { path: 'danger-zone', element: <Lazy><DangerZonePage /></Lazy> },
+      {
+        path: 'settings',
+        element: <Lazy><ProtectedRoute><SettingsPage /></ProtectedRoute></Lazy>,
+      },
+      {
+        path: 'bookmarks',
+        element: <Lazy><ProtectedRoute><BookmarksPage /></ProtectedRoute></Lazy>,
+      },
+      {
+        path: 'danger-zone',
+        element: <Lazy><ProtectedRoute><DangerZonePage /></ProtectedRoute></Lazy>,
+      },
       {
         path: 'admin',
-        element: <Lazy><AdminLayout /></Lazy>,
+        element: <Lazy><ProtectedRoute allowedRoles={['admin']}><AdminLayout /></ProtectedRoute></Lazy>,
         children: [
           { index: true, element: <Lazy><AdminPage /></Lazy> },
           { path: 'users', element: <Lazy><AdminUsersPage /></Lazy> },

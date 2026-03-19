@@ -294,6 +294,21 @@ export function Navbar() {
 
   const isActive = (path: string) => location.pathname === path
 
+  const homeLink = user
+    ? user.role === 'admin'
+      ? '/admin'
+      : user.role === 'public'
+        ? `/profile/${user.id}`
+        : '/dashboard'
+    : null
+  const homeLabel = user
+    ? user.role === 'admin'
+      ? 'Admin'
+      : user.role === 'public'
+        ? 'Profile'
+        : 'Dashboard'
+    : null
+
   return (
     <header
       className={`fixed top-0 left-0 right-0 z-40 transition-all duration-200 ${scrolled
@@ -329,6 +344,20 @@ export function Navbar() {
             <ElaraLogo className="w-4 h-4 text-[#9CA3AF] group-hover:text-[#0066FF] transition-colors" />
             <span className="hidden sm:block">Elara</span>
           </Link>
+
+          {homeLink && homeLabel && (
+            <Link
+              to={homeLink}
+              className={`hidden sm:flex items-center gap-1.5 px-3 py-2 rounded-full text-[14px] transition-colors duration-150 ${isActive(homeLink)
+                ? 'text-[#0066FF] bg-[#0066FF1A]'
+                : 'text-[#5C6370] dark:text-[#8B8FA8] hover:text-[#0A0A0A] dark:hover:text-[#F5F5F5] hover:bg-[#F0F2F5] dark:hover:bg-[#181818]'
+                }`}
+              style={{ fontFamily: 'var(--font-body)', fontWeight: 500 }}
+            >
+              <SquaresFour size={16} weight={isActive(homeLink) ? 'fill' : 'regular'} />
+              <span>{homeLabel}</span>
+            </Link>
+          )}
 
           {/* Dark mode toggle */}
           <button
