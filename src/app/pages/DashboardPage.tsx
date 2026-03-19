@@ -1,16 +1,16 @@
-import React, { useState, useEffect } from 'react'
+import React, { useState, useEffect, useMemo, useCallback } from 'react'
 import { Link, useNavigate } from 'react-router'
 import {
   SquaresFour, FolderOpen, UploadSimple, User, Gear,
   ClockCounterClockwise, CheckCircle, XCircle, Users,
-  GitDiff, BookmarkSimple, MagnifyingGlass, Robot,
+  GitDiff, BookmarkSimple, MagnifyingGlass,
   CaretDown, CaretUp, WarningCircle, ChatText, ArrowUpRight,
-  DownloadSimple, CalendarBlank, Star, Sparkle, Tray,
+  DownloadSimple, CalendarBlank, Star, Sparkle, Tray, PaperPlaneTilt,
 } from 'phosphor-react'
 import { motion, AnimatePresence } from 'motion/react'
 import { useSession } from '../../context/SessionContext'
-import { projectsApi, supervisorApi } from '../../lib/api'
-import type { Project, ProjectVersion, ProjectAuthor, ChangeRequest } from '../../lib/types'
+import { aiApi, projectsApi, supervisorApi } from '../../lib/api'
+import type { Project, ProjectVersion, ProjectAuthor, ChangeRequest, ChatMessage } from '../../lib/types'
 import { getCategoryStyle, relativeTime, formatNumber, getAvatarColor, getInitials } from '../../lib/utils'
 import { useTheme } from '../../context/ThemeContext'
 import { SkeletonDashboardCard } from '../components/SkeletonPrimitives'
@@ -437,22 +437,16 @@ function SupervisorProjectRow({ project }: { project: Project }) {
   const catStyle = project.ai_category ? getCategoryStyle(project.ai_category, isDark) : null
   const daysOld = Math.floor((Date.now() - new Date(project.updated_at).getTime()) / (24 * 60 * 60 * 1000))
   const isStale = daysOld > 7 && project.status === 'pending'
+  const authorNames = project.authors.map((a) => a.full_name ?? a.display_name ?? 'Unknown Student').join(', ')
 
   return (
     <Link to={`/projects/${project.id}`}
-      className="block rounded-2xl bg-white dark:bg-[#101010] border border-[#E5E7EB] dark:border-[#1C1C1C] p-5 hover:border-[#0066FF] hover:shadow-[0_4px_16px_rgba(0,102,255,0.08)] transition-all duration-150"
+      className="group block rounded-3xl bg-white dark:bg-[#101010] border border-[#E5E7EB] dark:border-[#1C1C1C] p-5 hover:border-[#0066FF] hover:shadow-[0_6px_20px_rgba(0,102,255,0.08)] transition-all duration-150"
       style={{ boxShadow: 'var(--shadow-card)' }}
     >
-      <div className="flex items-start justify-between gap-4">
+      <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
         <div className="flex-1 min-w-0">
-          <h3 className="mb-1 line-clamp-1 text-[#0A0A0A] dark:text-[#F5F5F5]"
-            style={{ fontFamily: 'var(--font-display)', fontWeight: 600, fontSize: '15px' }}>
-            {project.title}
-          </h3>
-          <p className="text-[12px] text-[#9CA3AF] mb-2" style={{ fontFamily: 'var(--font-body)' }}>
-            {project.authors.map((a) => a.full_name ?? a.display_name).join(', ')}
-          </p>
-          <div className="flex items-center gap-2 flex-wrap">
+          <div className="flex items-center gap-2 flex-wrap mb-3">
             {statusColors && (
               <span className="px-2.5 py-1 rounded-full text-[11px] font-medium"
                 style={{ backgroundColor: statusColors.badge, color: statusColors.text, fontFamily: 'var(--font-body)' }}>
@@ -466,23 +460,56 @@ function SupervisorProjectRow({ project }: { project: Project }) {
               </span>
             )}
             {isStale && (
-              <span className="flex items-center gap-1 text-[11px] text-[#D97706]">
-                <WarningCircle size={12} />{daysOld} days pending
+              <span className="flex items-center gap-1 rounded-full bg-[#FFF7ED] px-2.5 py-1 text-[11px] text-[#D97706]">
+                <WarningCircle size={12} /> {daysOld} days pending
               </span>
             )}
           </div>
+
+          <h3 className="mb-1 line-clamp-2 text-[#0A0A0A] dark:text-[#F5F5F5] group-hover:text-[#0066FF] transition-colors"
+            style={{ fontFamily: 'var(--font-display)', fontWeight: 700, fontSize: '16px', lineHeight: 1.35 }}>
+            {project.title}
+          </h3>
+          <p className="text-[12px] text-[#9CA3AF] mb-3" style={{ fontFamily: 'var(--font-body)' }}>
+            {authorNames}
+          </p>
+          <p className="text-[13px] text-[#5C6370] dark:text-[#8B8FA8] line-clamp-2" style={{ fontFamily: 'var(--font-body)', lineHeight: 1.65 }}>
+            {project.abstract}
+          </p>
         </div>
-        <div className="flex-shrink-0 text-right">
-          {project.plagiarism_score !== null && (
-            <span className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[11px] mb-1 ${project.plagiarism_score > 30 ? 'bg-[#FEF2F2] dark:bg-red-900/20 text-[#DC2626] dark:text-red-400' : 'bg-[#F0FDF4] dark:bg-green-900/20 text-[#16A34A] dark:text-green-400'}`}
-              style={{
-                fontFamily: 'var(--font-mono)',
-              }}>
-              {project.plagiarism_score}%
-              {project.plagiarism_score > 30 && project.similar_project_id && <WarningCircle size={13} weight="fill" />}
-            </span>
-          )}
-          <p className="text-[11px] text-[#9CA3AF]" style={{ fontFamily: 'var(--font-body)' }}>{relativeTime(project.updated_at)}</p>
+
+        <div className="lg:w-[220px] flex-shrink-0 rounded-2xl bg-[#F7F8FA] dark:bg-[#181818] p-4 border border-[#EEF2F7] dark:border-[#1C1C1C]">
+          <div className="flex items-center justify-between gap-3 mb-3">
+            <p className="text-[12px] text-[#6B7280] dark:text-[#9CA3AF]" style={{ fontFamily: 'var(--font-body)', fontWeight: 600 }}>
+              Review snapshot
+            </p>
+            <ArrowUpRight size={16} className="text-[#9CA3AF] group-hover:text-[#0066FF] transition-colors" />
+          </div>
+          <div className="space-y-2.5 text-[12px] text-[#5C6370] dark:text-[#8B8FA8]" style={{ fontFamily: 'var(--font-body)' }}>
+            <div className="flex items-center justify-between gap-3">
+              <span>Supervisor</span>
+              <span className="text-right text-[#0A0A0A] dark:text-[#F5F5F5] truncate">{project.supervisor_name ?? 'Assigned'}</span>
+            </div>
+            <div className="flex items-center justify-between gap-3">
+              <span>Updated</span>
+              <span className="text-right text-[#0A0A0A] dark:text-[#F5F5F5]">{relativeTime(project.updated_at)}</span>
+            </div>
+            <div className="flex items-center justify-between gap-3">
+              <span>Authors</span>
+              <span className="text-right text-[#0A0A0A] dark:text-[#F5F5F5]">{project.authors.length}</span>
+            </div>
+            <div className="flex items-center justify-between gap-3">
+              <span>Similarity</span>
+              {project.plagiarism_score !== null ? (
+                <span className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 ${project.plagiarism_score > 30 ? 'bg-[#FEF2F2] text-[#DC2626] dark:bg-red-900/20 dark:text-red-400' : 'bg-[#F0FDF4] text-[#16A34A] dark:bg-green-900/20 dark:text-green-400'}`}
+                  style={{ fontFamily: 'var(--font-mono)' }}>
+                  {project.plagiarism_score}%
+                </span>
+              ) : (
+                <span className="text-[#0A0A0A] dark:text-[#F5F5F5]">—</span>
+              )}
+            </div>
+          </div>
         </div>
       </div>
     </Link>
@@ -517,27 +544,256 @@ function StudentMiniCard({ author, projectCount }: { author: ProjectAuthor; proj
   )
 }
 
+function SupervisorMetricCard({
+  label,
+  value,
+  description,
+  accent,
+}: {
+  label: string
+  value: number
+  description: string
+  accent: string
+}) {
+  return (
+    <div className="rounded-3xl border border-[#E5E7EB] dark:border-[#1C1C1C] bg-white dark:bg-[#101010] p-5"
+      style={{ boxShadow: 'var(--shadow-card)' }}>
+      <div className="flex items-center justify-between gap-3 mb-3">
+        <p className="text-[12px] uppercase tracking-[0.18em] text-[#9CA3AF]" style={{ fontFamily: 'var(--font-body)', fontWeight: 700 }}>
+          {label}
+        </p>
+        <div className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: accent }} />
+      </div>
+      <p className="text-[30px] text-[#0A0A0A] dark:text-[#F5F5F5]" style={{ fontFamily: 'var(--font-display)', fontWeight: 700, lineHeight: 1 }}>
+        {formatNumber(value)}
+      </p>
+      <p className="mt-2 text-[13px] text-[#6B7280] dark:text-[#9CA3AF]" style={{ fontFamily: 'var(--font-body)', lineHeight: 1.6 }}>
+        {description}
+      </p>
+    </div>
+  )
+}
+
+function SupervisorStateCard({
+  title,
+  description,
+  tone = 'neutral',
+  action,
+}: {
+  title: string
+  description: string
+  tone?: 'neutral' | 'error' | 'success'
+  action?: React.ReactNode
+}) {
+  const toneStyles = {
+    neutral: 'border-[#E5E7EB] dark:border-[#1C1C1C] bg-white dark:bg-[#101010] text-[#9CA3AF]',
+    error: 'border-red-200 dark:border-red-900/40 bg-red-50 dark:bg-red-950/20 text-red-500',
+    success: 'border-[#BFDBFE] dark:border-[#1D4ED8]/40 bg-[#EFF6FF] dark:bg-[#0A1628] text-[#2563EB]',
+  }[tone]
+
+  return (
+    <div className={`rounded-3xl border p-8 text-center ${toneStyles}`}>
+      <FolderOpen size={40} weight="thin" className="mx-auto mb-4" />
+      <h3 className="text-[18px] text-[#0A0A0A] dark:text-[#F5F5F5] mb-2" style={{ fontFamily: 'var(--font-display)', fontWeight: 700 }}>
+        {title}
+      </h3>
+      <p className="mx-auto max-w-md text-[14px]" style={{ fontFamily: 'var(--font-body)', lineHeight: 1.65 }}>
+        {description}
+      </p>
+      {action ? <div className="mt-5">{action}</div> : null}
+    </div>
+  )
+}
+
+function SupervisorElaraPanel({ pendingCount, superviseeCount }: { pendingCount: number; superviseeCount: number }) {
+  const { user } = useSession()
+  const [messages, setMessages] = useState<ChatMessage[]>([])
+  const [input, setInput] = useState('')
+  const [sending, setSending] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+
+  const suggestions = useMemo(() => [
+    'Help me prioritize my pending reviews for today',
+    'Draft constructive feedback for a student project',
+    'What should I look for before approving a final-year project?',
+  ], [])
+
+  const send = useCallback(async () => {
+    const trimmed = input.trim()
+    if (!trimmed || sending || !user) return
+
+    const nextMessages: ChatMessage[] = [
+      ...messages,
+      { id: `supervisor-user-${Date.now()}`, role: 'user', content: trimmed, timestamp: new Date().toISOString() },
+    ]
+
+    setMessages(nextMessages)
+    setInput('')
+    setSending(true)
+    setError(null)
+
+    const res = await aiApi.assistant(
+      trimmed,
+      nextMessages.map((message) => ({ role: message.role, content: message.content })),
+      {
+        path: '/dashboard/supervisor',
+        role: user.role,
+      },
+    )
+
+    if (res.success) {
+      setMessages((prev) => [
+        ...prev,
+        { id: `supervisor-ai-${Date.now()}`, role: 'assistant', content: res.data.reply, timestamp: new Date().toISOString() },
+      ])
+    } else {
+      setError(res.error || 'Elara could not respond right now. Please try again.')
+    }
+
+    setSending(false)
+  }, [input, messages, sending, user])
+
+  return (
+    <div className="rounded-3xl border border-[#E5E7EB] dark:border-[#1C1C1C] bg-white dark:bg-[#101010] p-5"
+      style={{ boxShadow: 'var(--shadow-card)' }}>
+      <div className="flex items-start justify-between gap-4 mb-4">
+        <div>
+          <div className="flex items-center gap-2 mb-2">
+            <div className="w-9 h-9 rounded-2xl bg-[#0066FF] p-2 text-white shadow-[0_8px_24px_rgba(0,102,255,0.2)]">
+              <ElaraLogo variant="blue" className="w-full h-full" />
+            </div>
+            <div>
+              <h2 className="text-[18px] text-[#0A0A0A] dark:text-[#F5F5F5]" style={{ fontFamily: 'var(--font-display)', fontWeight: 700 }}>
+                Elara for supervisors
+              </h2>
+              <p className="text-[12px] text-[#9CA3AF]" style={{ fontFamily: 'var(--font-body)' }}>
+                Academic review guidance scoped to supervision workflows.
+              </p>
+            </div>
+          </div>
+          <p className="text-[13px] text-[#5C6370] dark:text-[#8B8FA8]" style={{ fontFamily: 'var(--font-body)', lineHeight: 1.65 }}>
+            Ask Elara to summarize review priorities, improve comments, or sanity-check approval decisions for your {superviseeCount} supervisee{superviseeCount !== 1 ? 's' : ''} and {pendingCount} pending review{pendingCount !== 1 ? 's' : ''}.
+          </p>
+        </div>
+      </div>
+
+      <div className="rounded-2xl bg-[#F7F8FA] dark:bg-[#181818] border border-[#EEF2F7] dark:border-[#1C1C1C] p-3 mb-4">
+        <div className="flex flex-wrap gap-2">
+          {suggestions.map((suggestion) => (
+            <button
+              key={suggestion}
+              onClick={() => setInput(suggestion)}
+              className="rounded-full border border-[#DCE5F2] dark:border-[#243041] px-3 py-1.5 text-[12px] text-[#5C6370] dark:text-[#8B8FA8] hover:border-[#0066FF] hover:text-[#0066FF] transition-colors"
+              style={{ fontFamily: 'var(--font-body)' }}
+            >
+              {suggestion}
+            </button>
+          ))}
+        </div>
+      </div>
+
+      <div className="min-h-[220px] max-h-[320px] overflow-y-auto rounded-2xl border border-[#E5E7EB] dark:border-[#1C1C1C] bg-[#FCFCFD] dark:bg-[#080808] p-4 space-y-3 mb-4">
+        {messages.length === 0 ? (
+          <div className="h-full flex flex-col items-center justify-center text-center py-8">
+            <Sparkle size={34} className="text-[#9CA3AF] mb-3" />
+            <p className="text-[15px] text-[#0A0A0A] dark:text-[#F5F5F5] mb-1" style={{ fontFamily: 'var(--font-display)', fontWeight: 600 }}>
+              Ready to assist with review decisions
+            </p>
+            <p className="max-w-sm text-[13px] text-[#9CA3AF]" style={{ fontFamily: 'var(--font-body)', lineHeight: 1.6 }}>
+              Elara stays within academic project review, supervisor feedback, moderation, and repository guidance.
+            </p>
+          </div>
+        ) : (
+          messages.map((message) => {
+            const isUser = message.role === 'user'
+            return (
+              <div key={message.id} className={`flex ${isUser ? 'justify-end' : 'justify-start'}`}>
+                <div className={`max-w-[88%] rounded-2xl px-4 py-3 text-[13px] leading-relaxed ${isUser ? 'bg-[#0066FF] text-white rounded-br-md' : 'bg-white dark:bg-[#101010] border border-[#E5E7EB] dark:border-[#1C1C1C] text-[#0A0A0A] dark:text-[#F5F5F5] rounded-bl-md'}`}
+                  style={{ fontFamily: 'var(--font-body)' }}>
+                  {message.content}
+                </div>
+              </div>
+            )
+          })
+        )}
+
+        {sending && (
+          <div className="flex justify-start">
+            <div className="rounded-2xl rounded-bl-md border border-[#E5E7EB] dark:border-[#1C1C1C] bg-white dark:bg-[#101010] px-4 py-3 text-[13px] text-[#9CA3AF]">
+              Elara is preparing a supervisor-focused reply…
+            </div>
+          </div>
+        )}
+      </div>
+
+      {error && (
+        <div className="mb-4 rounded-2xl border border-red-200 dark:border-red-900/40 bg-red-50 dark:bg-red-950/20 px-4 py-3">
+          <p className="text-[13px] text-red-600 dark:text-red-300" style={{ fontFamily: 'var(--font-body)' }}>
+            {error}
+          </p>
+        </div>
+      )}
+
+      <div className="flex items-center gap-3 rounded-2xl border border-[#E5E7EB] dark:border-[#1C1C1C] bg-white dark:bg-[#101010] px-4 py-3 focus-within:border-[#0066FF] focus-within:shadow-[0_0_0_3px_rgba(0,102,255,0.12)] transition-all">
+        <input
+          value={input}
+          onChange={(e) => setInput(e.target.value)}
+          onKeyDown={(e) => e.key === 'Enter' && void send()}
+          placeholder="Ask Elara about review priorities, feedback, or approval decisions..."
+          className="flex-1 bg-transparent outline-none text-[14px] text-[#0A0A0A] dark:text-[#F5F5F5] placeholder-[#9CA3AF]"
+          style={{ fontFamily: 'var(--font-body)' }}
+          disabled={sending}
+        />
+        <button
+          onClick={() => void send()}
+          disabled={!input.trim() || sending}
+          className={`flex h-10 w-10 items-center justify-center rounded-full transition-colors ${input.trim() && !sending ? 'bg-[#0066FF] text-white hover:bg-[#0052CC]' : 'bg-[#F3F4F6] dark:bg-[#181818] text-[#9CA3AF]'}`}
+        >
+          <PaperPlaneTilt size={18} weight="fill" />
+        </button>
+      </div>
+    </div>
+  )
+}
+
 // ─── Supervisor dashboard ─────────────────────────────────────────────────────
 
-function SupervisorDashboard({ firstName, userId }: { firstName: string; userId: string }) {
+function SupervisorDashboard({ firstName }: { firstName: string }) {
   const [projects, setProjects] = useState<Project[]>([])
   const [changeRequests, setChangeRequests] = useState<ChangeRequest[]>([])
   const [loading, setLoading] = useState(true)
+  const [loadError, setLoadError] = useState<string | null>(null)
   const [activeSection, setActiveSection] = useState('overview')
   const { user } = useSession()
 
-  useEffect(() => {
-    Promise.all([
+  const loadDashboard = useCallback(async () => {
+    setLoading(true)
+    setLoadError(null)
+
+    const [projRes, crRes] = await Promise.all([
       supervisorApi.projects(),
       supervisorApi.changeRequests(),
-    ]).then(([projRes, crRes]) => {
-      if (projRes.success) setProjects(projRes.data)
-      if (crRes.success) setChangeRequests(crRes.data)
-      setLoading(false)
-    })
+    ])
+
+    if (projRes.success) {
+      setProjects(projRes.data)
+    }
+    if (crRes.success) {
+      setChangeRequests(crRes.data)
+    }
+
+    const errors = [projRes, crRes].filter((res) => !res.success).map((res) => res.error)
+    if (errors.length > 0) {
+      setLoadError(errors.join(' • '))
+    }
+
+    setLoading(false)
   }, [])
 
-  // Unverified guard
+  useEffect(() => {
+    void loadDashboard()
+  }, [loadDashboard])
+
   if (user && !user.is_verified) {
     return (
       <div className="text-center py-24">
@@ -562,16 +818,19 @@ function SupervisorDashboard({ firstName, userId }: { firstName: string; userId:
     setChangeRequests((prev) => prev.filter((cr) => cr.id !== id))
   }
 
-  // Derive unique students from project authors
   const studentMap = new Map<string, { author: ProjectAuthor; count: number }>()
   projects.forEach((p) => {
     p.authors.forEach((a) => {
       const existing = studentMap.get(a.id)
-      if (existing) existing.count++
+      if (existing) existing.count += 1
       else studentMap.set(a.id, { author: a, count: 1 })
     })
   })
   const students = Array.from(studentMap.values())
+  const staleReviews = pending.filter((project) => {
+    const days = (Date.now() - new Date(project.updated_at).getTime()) / (24 * 60 * 60 * 1000)
+    return days > 7
+  })
 
   const sidebarItems: SidebarItem[] = [
     { icon: <SquaresFour size={18} />, label: 'Overview', key: 'overview' },
@@ -583,21 +842,6 @@ function SupervisorDashboard({ firstName, userId }: { firstName: string; userId:
     { icon: <Users size={18} />, label: 'My Students', key: 'students', badge: students.length || undefined },
   ]
 
-  const statCards = [
-    { label: 'Total', value: projects.length },
-    { label: 'Pending', value: pending.length },
-    { label: 'Approved', value: approved.length },
-    { label: 'Requests', value: pendingCRs.length },
-  ]
-
-  // Re-usable empty state
-  const EmptyList = ({ label }: { label: string }) => (
-    <div className="text-center py-16 rounded-2xl border border-dashed border-[#E5E7EB] dark:border-[#1C1C1C]">
-      <FolderOpen size={44} weight="thin" className="text-[#9CA3AF] mx-auto mb-3" />
-      <p className="text-[14px] text-[#9CA3AF]" style={{ fontFamily: 'var(--font-body)' }}>No {label} projects.</p>
-    </div>
-  )
-
   const sectionTitle: Record<string, string> = {
     pending: `Pending Review (${pending.length})`,
     changes: `Change Requests (${changes.length})`,
@@ -606,16 +850,21 @@ function SupervisorDashboard({ firstName, userId }: { firstName: string; userId:
   }
 
   const sectionData: Record<string, Project[]> = { pending, changes, approved, rejected }
+  const activeList = sectionData[activeSection as keyof typeof sectionData] ?? []
+  const recentPending = pending.slice(0, 4)
+  const featuredStudents = students.slice(0, 4)
 
-  const activeList = (() => {
-    switch (activeSection) {
-      case 'pending': return pending
-      case 'changes': return changes
-      case 'approved': return approved
-      case 'rejected': return rejected
-      default: return []
-    }
-  })()
+  const SectionEmpty = ({ title, description }: { title: string; description: string }) => (
+    <SupervisorStateCard title={title} description={description} action={
+      <button
+        onClick={() => void loadDashboard()}
+        className="rounded-full border border-[#DCE5F2] px-4 py-2 text-[13px] text-[#0066FF] hover:border-[#0066FF]"
+        style={{ fontFamily: 'var(--font-body)', fontWeight: 600 }}
+      >
+        Refresh
+      </button>
+    } />
+  )
 
   return (
     <DashboardLayout
@@ -623,82 +872,172 @@ function SupervisorDashboard({ firstName, userId }: { firstName: string; userId:
       onNavigate={setActiveSection}
       sidebarItems={sidebarItems}
     >
-      <div className="flex items-center justify-between mb-8">
+      <div className="flex flex-col lg:flex-row lg:items-end lg:justify-between gap-4 mb-8">
         <div>
           <h1 className="text-[#0A0A0A] dark:text-[#F5F5F5] mb-1"
-            style={{ fontFamily: 'var(--font-display)', fontWeight: 700, fontSize: '28px', letterSpacing: '-0.02em' }}>
+            style={{ fontFamily: 'var(--font-display)', fontWeight: 700, fontSize: '30px', letterSpacing: '-0.02em' }}>
             Hello, {firstName}.
           </h1>
-          <p className="text-[14px] text-[#9CA3AF]" style={{ fontFamily: 'var(--font-body)' }}>
+          <p className="text-[14px] text-[#9CA3AF] max-w-2xl" style={{ fontFamily: 'var(--font-body)', lineHeight: 1.65 }}>
             {activeSection === 'overview'
-              ? `You have ${pending.length} project${pending.length !== 1 ? 's' : ''} awaiting review.`
+              ? `You currently supervise ${students.length} student${students.length !== 1 ? 's' : ''}, with ${pending.length} project${pending.length !== 1 ? 's' : ''} awaiting review and ${pendingCRs.length} student request${pendingCRs.length !== 1 ? 's' : ''} needing attention.`
               : `Reviewing ${activeList.length} ${activeSection} project${activeList.length !== 1 ? 's' : ''}.`}
           </p>
         </div>
+
+        {!loading && !loadError && (
+          <div className="inline-flex items-center gap-2 rounded-full bg-[#0066FF0D] border border-[#0066FF1F] px-4 py-2 text-[13px] text-[#0066FF]"
+            style={{ fontFamily: 'var(--font-body)', fontWeight: 600 }}>
+            <Sparkle size={14} weight="fill" /> Supervisor workspace ready
+          </div>
+        )}
       </div>
+
+      {loadError && (
+        <div className="mb-6 rounded-3xl border border-red-200 dark:border-red-900/40 bg-red-50 dark:bg-red-950/20 p-5">
+          <div className="flex items-start justify-between gap-4">
+            <div>
+              <p className="text-[14px] text-red-600 dark:text-red-300 mb-1" style={{ fontFamily: 'var(--font-display)', fontWeight: 700 }}>
+                We couldn't fully load the supervisor dashboard.
+              </p>
+              <p className="text-[13px] text-red-600/80 dark:text-red-300/80" style={{ fontFamily: 'var(--font-body)', lineHeight: 1.6 }}>
+                {loadError}
+              </p>
+            </div>
+            <button
+              onClick={() => void loadDashboard()}
+              className="rounded-full bg-white px-4 py-2 text-[13px] text-red-600 hover:bg-red-100 dark:bg-[#101010] dark:hover:bg-[#181818]"
+              style={{ fontFamily: 'var(--font-body)', fontWeight: 600 }}
+            >
+              Retry
+            </button>
+          </div>
+        </div>
+      )}
 
       {activeSection === 'overview' && (
         <motion.div key="overview" initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.2 }}>
-          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-8">
-            {statCards.map((s) => (
-              <div key={s.label}
-                className="flex flex-col gap-1 p-4 rounded-2xl bg-white dark:bg-[#101010] border border-[#E5E7EB] dark:border-[#1C1C1C]"
-                style={{ boxShadow: 'var(--shadow-card)' }}>
-                <span className="text-[24px] text-[#0A0A0A] dark:text-[#F5F5F5]" style={{ fontFamily: 'var(--font-display)', fontWeight: 700, lineHeight: 1.1 }}>{s.value}</span>
-                <span className="text-[12px] text-[#6B7280] dark:text-[#9CA3AF]" style={{ fontFamily: 'var(--font-body)' }}>{s.label}</span>
+          <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4 mb-8">
+            <SupervisorMetricCard label="Supervisees" value={students.length} description="Active students assigned across your review queue." accent="#0066FF" />
+            <SupervisorMetricCard label="Pending reviews" value={pending.length} description="Projects awaiting your review decision or feedback." accent="#D97706" />
+            <SupervisorMetricCard label="Needs revision" value={changes.length} description="Projects currently in a revision cycle after feedback." accent="#7C3AED" />
+            <SupervisorMetricCard label="Overdue" value={staleReviews.length} description="Pending reviews older than seven days and worth prioritizing." accent="#DC2626" />
+          </div>
+
+          <div className="rounded-3xl border border-[#E5E7EB] dark:border-[#1C1C1C] bg-gradient-to-br from-[#0066FF] via-[#0A5AE0] to-[#0C2E6D] p-6 text-white mb-8"
+            style={{ boxShadow: '0 18px 44px rgba(0,102,255,0.18)' }}>
+            <div className="flex flex-col lg:flex-row lg:items-end lg:justify-between gap-6">
+              <div>
+                <p className="text-[12px] uppercase tracking-[0.22em] text-white/70 mb-2" style={{ fontFamily: 'var(--font-body)', fontWeight: 700 }}>
+                  Review focus
+                </p>
+                <h2 className="text-[24px] mb-2" style={{ fontFamily: 'var(--font-display)', fontWeight: 700, letterSpacing: '-0.02em' }}>
+                  Keep the supervision pipeline moving.
+                </h2>
+                <p className="max-w-2xl text-[14px] text-white/80" style={{ fontFamily: 'var(--font-body)', lineHeight: 1.7 }}>
+                  Prioritize pending reviews, respond to student change requests, and use Elara to sharpen your review notes before you approve or request revisions.
+                </p>
               </div>
-            ))}
+              <div className="grid grid-cols-2 gap-3 min-w-[260px]">
+                <div className="rounded-2xl bg-white/10 px-4 py-3 backdrop-blur-sm">
+                  <p className="text-[11px] text-white/70" style={{ fontFamily: 'var(--font-body)' }}>Pending queue</p>
+                  <p className="text-[22px]" style={{ fontFamily: 'var(--font-display)', fontWeight: 700 }}>{pending.length}</p>
+                </div>
+                <div className="rounded-2xl bg-white/10 px-4 py-3 backdrop-blur-sm">
+                  <p className="text-[11px] text-white/70" style={{ fontFamily: 'var(--font-body)' }}>Supervisees</p>
+                  <p className="text-[22px]" style={{ fontFamily: 'var(--font-display)', fontWeight: 700 }}>{students.length}</p>
+                </div>
+              </div>
+            </div>
           </div>
 
-          {/* Quick actions */}
-          <h2 className="text-[15px] text-[#0A0A0A] dark:text-[#F5F5F5] mb-4" style={{ fontFamily: 'var(--font-display)', fontWeight: 600 }}>Quick Actions</h2>
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-8">
-            <QuickActionCard icon={<UploadSimple size={20} />} label="Upload New Project" desc="Submit your final year project" href="/upload" color="#0066FF" />
-            <QuickActionCard icon={<MagnifyingGlass size={20} />} label="Browse Repository" desc="Explore approved projects" href="/projects" color="#0066FF" />
-            <QuickActionCard icon={<BookmarkSimple size={20} />} label="My Bookmarks" desc="Projects you've saved" href="/bookmarks" color="#0066FF" />
-            <QuickActionCard icon={<ElaraLogo className="w-5 h-5" />} label="Ask Elara" desc="AI research assistant" href="/elara" color="#0066FF" />
+          <div className="grid grid-cols-1 xl:grid-cols-[minmax(0,1.2fr)_minmax(360px,0.8fr)] gap-6 mb-8">
+            <div className="space-y-6">
+              <div>
+                <div className="flex items-center justify-between mb-4">
+                  <div>
+                    <h2 className="text-[18px] text-[#0A0A0A] dark:text-[#F5F5F5]" style={{ fontFamily: 'var(--font-display)', fontWeight: 700 }}>
+                      Pending review queue
+                    </h2>
+                    <p className="text-[13px] text-[#9CA3AF] mt-1" style={{ fontFamily: 'var(--font-body)' }}>
+                      The next submissions that need your attention.
+                    </p>
+                  </div>
+                  {pending.length > 0 && (
+                    <button onClick={() => setActiveSection('pending')} className="text-[13px] text-[#0066FF] hover:underline" style={{ fontFamily: 'var(--font-body)', fontWeight: 600 }}>
+                      View full queue
+                    </button>
+                  )}
+                </div>
+
+                {loading ? (
+                  <div className="space-y-4">{[1, 2, 3].map((i) => <SkeletonDashboardCard key={i} />)}</div>
+                ) : recentPending.length === 0 ? (
+                  <SectionEmpty title="No pending reviews" description="All caught up for now. New submissions will appear here as students submit projects." />
+                ) : (
+                  <div className="space-y-4">
+                    {recentPending.map((p) => <SupervisorProjectRow key={p.id} project={p} />)}
+                  </div>
+                )}
+              </div>
+
+              <div>
+                <div className="flex items-center justify-between mb-4">
+                  <div>
+                    <h2 className="text-[18px] text-[#0A0A0A] dark:text-[#F5F5F5]" style={{ fontFamily: 'var(--font-display)', fontWeight: 700 }}>
+                      Supervisees
+                    </h2>
+                    <p className="text-[13px] text-[#9CA3AF] mt-1" style={{ fontFamily: 'var(--font-body)' }}>
+                      Students currently represented in your project portfolio.
+                    </p>
+                  </div>
+                  {students.length > 0 && (
+                    <button onClick={() => setActiveSection('students')} className="text-[13px] text-[#0066FF] hover:underline" style={{ fontFamily: 'var(--font-body)', fontWeight: 600 }}>
+                      See all students
+                    </button>
+                  )}
+                </div>
+
+                {loading ? (
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">{[1, 2, 3, 4].map((i) => <SkeletonDashboardCard key={i} />)}</div>
+                ) : featuredStudents.length === 0 ? (
+                  <SectionEmpty title="No supervisees yet" description="Once students submit under your supervision, they will appear here with quick access to their profiles." />
+                ) : (
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    {featuredStudents.map(({ author, count }) => (
+                      <StudentMiniCard key={author.id} author={author} projectCount={count} />
+                    ))}
+                  </div>
+                )}
+              </div>
+            </div>
+
+            <SupervisorElaraPanel pendingCount={pending.length} superviseeCount={students.length} />
           </div>
 
-          {/* Student change requests alert */}
           {pendingCRs.length > 0 && (
-            <div className="rounded-2xl bg-[#FFFBEB] dark:bg-[#1C1200] border border-[#FDE68A] dark:border-[#7C5E00] p-4 mb-6 flex items-start gap-3">
+            <div className="rounded-3xl bg-[#FFFBEB] dark:bg-[#1C1200] border border-[#FDE68A] dark:border-[#7C5E00] p-5 mb-6 flex items-start gap-3">
               <Tray size={20} className="text-[#D97706] flex-shrink-0 mt-0.5" />
               <div className="flex-1">
-                <p className="text-[13px] text-[#D97706]" style={{ fontFamily: 'var(--font-display)', fontWeight: 600 }}>
-                  {pendingCRs.length} Student Change Request{pendingCRs.length > 1 ? 's' : ''}
+                <p className="text-[14px] text-[#D97706]" style={{ fontFamily: 'var(--font-display)', fontWeight: 700 }}>
+                  {pendingCRs.length} student change request{pendingCRs.length > 1 ? 's' : ''} waiting for review
                 </p>
-                <p className="text-[12px] text-[#D97706]/70 mt-0.5" style={{ fontFamily: 'var(--font-body)' }}>
-                  Students have requested edits to their approved projects. Review each diff and approve or deny.
+                <p className="text-[13px] text-[#D97706]/80 mt-1" style={{ fontFamily: 'var(--font-body)', lineHeight: 1.65 }}>
+                  Students have asked to edit approved projects. Review each diff to approve or deny the update cleanly.
                 </p>
               </div>
               <button
                 onClick={() => setActiveSection('studentrequests')}
-                className="flex-shrink-0 text-[12px] text-[#D97706] hover:underline"
+                className="flex-shrink-0 rounded-full bg-white px-4 py-2 text-[13px] text-[#D97706] hover:bg-[#FFF7ED]"
                 style={{ fontFamily: 'var(--font-body)', fontWeight: 600 }}
               >
-                Review
+                Review requests
               </button>
             </div>
-          )}
-
-          {/* Recent pending */}
-          {pending.length > 0 && (
-            <>
-              <div className="flex items-center justify-between mb-4">
-                <h2 className="text-[15px] text-[#0A0A0A] dark:text-[#F5F5F5]" style={{ fontFamily: 'var(--font-display)', fontWeight: 600 }}>Needs Review</h2>
-                <button onClick={() => setActiveSection('pending')} className="text-[13px] text-[#0066FF] hover:underline" style={{ fontFamily: 'var(--font-body)' }}>
-                  View all
-                </button>
-              </div>
-              <div className="space-y-3">
-                {pending.slice(0, 3).map((p) => <SupervisorProjectRow key={p.id} project={p} />)}
-              </div>
-            </>
           )}
         </motion.div>
       )}
 
-      {/* ── FILTERED SECTIONS (pending / changes / approved / rejected) ── */}
       {(['pending', 'changes', 'approved', 'rejected'] as const).map((key) => (
         activeSection === key && (
           <motion.div key={key} initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.2 }}>
@@ -707,16 +1046,16 @@ function SupervisorDashboard({ firstName, userId }: { firstName: string; userId:
                 style={{ fontFamily: 'var(--font-display)', fontWeight: 700, fontSize: '24px', letterSpacing: '-0.02em' }}>
                 {sectionTitle[key]}
               </h1>
+              <p className="text-[13px] text-[#9CA3AF] mt-1" style={{ fontFamily: 'var(--font-body)' }}>
+                Review the projects in this stage and open any card to continue the workflow.
+              </p>
             </div>
             {loading ? (
               <div className="space-y-4">{[1, 2, 3].map((i) => <SkeletonDashboardCard key={i} />)}</div>
             ) : sectionData[key].length === 0 ? (
-              <div className="text-center py-20 rounded-2xl border border-dashed border-[#E5E7EB] dark:border-[#1C1C1C]">
-                <Tray size={48} weight="thin" className="text-[#9CA3AF] mx-auto mb-4" />
-                <p className="text-[14px] text-[#9CA3AF]" style={{ fontFamily: 'var(--font-body)' }}>No projects in this section.</p>
-              </div>
+              <SectionEmpty title={`No ${key} projects`} description="When projects move into this stage, they will show up here with their latest metadata and review signals." />
             ) : (
-              <div className="space-y-3">
+              <div className="space-y-4">
                 {sectionData[key].map((p) => <SupervisorProjectRow key={p.id} project={p} />)}
               </div>
             )}
@@ -724,7 +1063,6 @@ function SupervisorDashboard({ firstName, userId }: { firstName: string; userId:
         )
       ))}
 
-      {/* ── STUDENT CHANGE REQUESTS ── */}
       {activeSection === 'studentrequests' && (
         <motion.div key="studentrequests" initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.2 }}>
           <div className="mb-6">
@@ -739,12 +1077,7 @@ function SupervisorDashboard({ firstName, userId }: { firstName: string; userId:
           {loading ? (
             <div className="space-y-4">{[1, 2].map((i) => <SkeletonDashboardCard key={i} />)}</div>
           ) : pendingCRs.length === 0 ? (
-            <div className="text-center py-16 rounded-2xl border border-dashed border-[#E5E7EB] dark:border-[#1C1C1C]">
-              <Tray size={44} weight="thin" className="text-[#9CA3AF] mx-auto mb-3" />
-              <p className="text-[14px] text-[#9CA3AF]" style={{ fontFamily: 'var(--font-body)' }}>
-                No pending change requests — you're all caught up.
-              </p>
-            </div>
+            <SectionEmpty title="No student change requests" description="Approved-project edit requests will appear here once students submit them." />
           ) : (
             <div className="space-y-4">
               {pendingCRs.map((cr) => {
@@ -763,7 +1096,6 @@ function SupervisorDashboard({ firstName, userId }: { firstName: string; userId:
         </motion.div>
       )}
 
-      {/* ── MY STUDENTS ── */}
       {activeSection === 'students' && (
         <motion.div key="students" initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.2 }}>
           <div className="mb-6">
@@ -778,10 +1110,7 @@ function SupervisorDashboard({ firstName, userId }: { firstName: string; userId:
           {loading ? (
             <div className="space-y-3">{[1, 2, 3].map((i) => <SkeletonDashboardCard key={i} />)}</div>
           ) : students.length === 0 ? (
-            <div className="text-center py-16 rounded-2xl border border-dashed border-[#E5E7EB] dark:border-[#1C1C1C]">
-              <Users size={44} weight="thin" className="text-[#9CA3AF] mx-auto mb-3" />
-              <p className="text-[14px] text-[#9CA3AF]" style={{ fontFamily: 'var(--font-body)' }}>No students yet.</p>
-            </div>
+            <SectionEmpty title="No supervisees yet" description="Students will appear here after they submit projects tied to your supervision account." />
           ) : (
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               {students.map(({ author, count }) => (
@@ -820,6 +1149,6 @@ export function DashboardPage() {
   const firstName = (user.display_name ?? user.full_name ?? 'there').split(' ')[0]
 
   return user.role === 'supervisor'
-    ? <SupervisorDashboard firstName={firstName} userId={user.id} />
+    ? <SupervisorDashboard firstName={firstName} />
     : <StudentDashboard firstName={firstName} userId={user.id} />
 }
