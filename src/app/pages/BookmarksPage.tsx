@@ -154,7 +154,7 @@ export function BookmarksPage() {
   const [query, setQuery] = useState('')
 
   useEffect(() => {
-    if (!sessionLoading && !user) navigate('/login?return=/bookmarks')
+    if (!sessionLoading && !user) navigate('/login?redirect=%2Fbookmarks')
   }, [user, sessionLoading, navigate])
 
   useEffect(() => {

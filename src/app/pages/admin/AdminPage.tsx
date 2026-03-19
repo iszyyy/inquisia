@@ -1,12 +1,9 @@
 import React, { useEffect, useState } from 'react'
 import { Link } from 'react-router'
 import { ChartBar, Users, FolderOpen, DownloadSimple, Warning } from 'phosphor-react'
-import { useSession } from '../../../context/SessionContext'
 import { publicApi, adminApi } from '../../../lib/api'
 import type { PublicStats, Project } from '../../../lib/types'
 import { SkeletonBlock } from '../../components/SkeletonPrimitives'
-import { relativeTime } from '../../../lib/utils'
-
 function StatCard({ icon, label, value, color }: { icon: React.ReactNode; label: string; value: number | string; color: string }) {
   return (
     <div className="rounded-2xl bg-white dark:bg-[#101010] border border-[#E5E7EB] dark:border-[#1C1C1C] p-5"
@@ -90,6 +87,45 @@ export function AdminPage() {
             <p className="text-[24px] font-bold" style={{ fontFamily: 'var(--font-display)', color: s.color }}>{s.count}</p>
           </div>
         ))}
+      </div>
+
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 mb-8">
+        <div className="rounded-2xl bg-white dark:bg-[#101010] border border-[#E5E7EB] dark:border-[#1C1C1C] p-5" style={{ boxShadow: 'var(--shadow-card)' }}>
+          <div className="flex items-center justify-between gap-4 mb-3">
+            <div>
+              <h2 className="text-[15px] text-[#0A0A0A] dark:text-[#F5F5F5]" style={{ fontFamily: 'var(--font-display)', fontWeight: 600 }}>Publication Control</h2>
+              <p className="text-[13px] text-[#9CA3AF] mt-1" style={{ fontFamily: 'var(--font-body)' }}>Use project moderation to publish, unpublish, or override approval state.</p>
+            </div>
+            <Link to="/admin/projects" className="text-[13px] text-[#0066FF] hover:underline" style={{ fontFamily: 'var(--font-body)' }}>Open moderation</Link>
+          </div>
+          <div className="grid grid-cols-3 gap-3">
+            {[
+              { label: 'Published', value: approvedProjects.length },
+              { label: 'Pending', value: pendingProjects.length },
+              { label: 'Flagged', value: slackingSupervisors.length },
+            ].map((item) => (
+              <div key={item.label} className="rounded-2xl bg-[#F7F8FA] dark:bg-[#181818] px-4 py-3">
+                <p className="text-[11px] text-[#9CA3AF]" style={{ fontFamily: 'var(--font-body)' }}>{item.label}</p>
+                <p className="text-[20px] text-[#0A0A0A] dark:text-[#F5F5F5]" style={{ fontFamily: 'var(--font-display)', fontWeight: 700 }}>{item.value}</p>
+              </div>
+            ))}
+          </div>
+        </div>
+
+        <div className="rounded-2xl bg-white dark:bg-[#101010] border border-[#E5E7EB] dark:border-[#1C1C1C] p-5" style={{ boxShadow: 'var(--shadow-card)' }}>
+          <div className="flex items-center justify-between gap-4 mb-3">
+            <div>
+              <h2 className="text-[15px] text-[#0A0A0A] dark:text-[#F5F5F5]" style={{ fontFamily: 'var(--font-display)', fontWeight: 600 }}>AI Settings Surface</h2>
+              <p className="text-[13px] text-[#9CA3AF] mt-1" style={{ fontFamily: 'var(--font-body)' }}>Current backend support exposes AI category management; broader AI/system controls still need dedicated endpoints.</p>
+            </div>
+            <Link to="/admin/ai-categories" className="text-[13px] text-[#0066FF] hover:underline" style={{ fontFamily: 'var(--font-body)' }}>Manage categories</Link>
+          </div>
+          <ul className="space-y-2 text-[13px] text-[#5C6370] dark:text-[#8B8FA8]" style={{ fontFamily: 'var(--font-body)' }}>
+            <li>• Category taxonomy is editable from the admin categories page.</li>
+            <li>• Assistant prompt policies, rate limits, and model controls need backend-admin APIs.</li>
+            <li>• This panel is intentionally transparent so demo users can see the current contract boundary.</li>
+          </ul>
+        </div>
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">

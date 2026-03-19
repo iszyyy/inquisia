@@ -6,6 +6,7 @@ import { useSession } from '../../context/SessionContext'
 import { authApi, publicApi } from '../../lib/api'
 import type { Department } from '../../lib/types'
 import { toast } from 'sonner'
+import { getDefaultRouteForUser } from '../../lib/auth'
 import { useEffect } from 'react'
 import { InquisiaLogo } from '../components/ui/InquisiaLogo'
 import {
@@ -194,7 +195,7 @@ export function RegisterPage() {
     if (res.success) {
       login(res.data)
       toast.success('Account created! Welcome to Inquisia.')
-      navigate('/dashboard')
+      navigate(getDefaultRouteForUser(res.data))
     } else {
       setError(res.error)
     }

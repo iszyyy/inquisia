@@ -186,7 +186,7 @@ export function UploadPage() {
   const [showSimilarityWarning, setShowSimilarityWarning] = useState(false)
 
   useEffect(() => {
-    if (!isLoading && (!user || user.role !== 'student')) navigate('/login?return=/upload')
+    if (!isLoading && (!user || user.role !== 'student')) navigate('/login?redirect=%2Fupload')
   }, [user, isLoading, navigate])
 
   useEffect(() => {

@@ -395,7 +395,7 @@ export function SettingsPage() {
   const [activeTab, setActiveTab] = useState<Tab>('profile')
 
   useEffect(() => {
-    if (!isLoading && !user) navigate('/login?return=/settings')
+    if (!isLoading && !user) navigate('/login?redirect=%2Fsettings')
   }, [user, isLoading, navigate])
 
   if (isLoading || !user) {

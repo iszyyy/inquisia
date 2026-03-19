@@ -1,11 +1,12 @@
-import React, { useState, useRef, useEffect, useCallback } from 'react'
+import React, { useState, useRef, useEffect, useCallback, useMemo } from 'react'
 import { Link, useLocation } from 'react-router'
-import { Robot, X, PaperPlaneTilt, ChatCircle } from 'phosphor-react'
+import { X, PaperPlaneTilt, ChatCircle } from 'phosphor-react'
 import { motion, AnimatePresence } from 'motion/react'
 import ReactMarkdown from 'react-markdown'
 import remarkGfm from 'remark-gfm'
 import { useSession } from '../../context/SessionContext'
 import { aiApi, projectsApi } from '../../lib/api'
+import { buildAssistantHistory, getElaraPageContext, getElaraScopeCopy, getElaraSuggestions } from '../../lib/elara'
 import type { ChatMessage } from '../../lib/types'
 import { ElaraLogo } from './ui/ElaraLogo'
 
@@ -85,6 +86,7 @@ export function FloatingAssistantWrapper() {
   const [sending, setSending] = useState(false)
   const [latestAIId, setLatestAIId] = useState<string | null>(null)
   const [pagePdfText, setPagePdfText] = useState<string | null>(null)
+  const [error, setError] = useState<string | null>(null)
   const scrollRef = useRef<HTMLDivElement>(null)
   const inputRef = useRef<HTMLInputElement>(null)
 
@@ -119,6 +121,7 @@ export function FloatingAssistantWrapper() {
       setMessages([])
       setInput('')
       setLatestAIId(null)
+      setError(null)
     }
 
     return () => {
@@ -133,18 +136,10 @@ export function FloatingAssistantWrapper() {
     }
   }, [open])
 
-  const getContext = useCallback(() => {
-    const path = location.pathname
-    const isProjectPage = path.startsWith('/projects/') && !path.endsWith('/projects')
-    const projectId = isProjectPage ? path.split('/')[2] : undefined
+  const getContext = useCallback(() => getElaraPageContext(user, location.pathname, pagePdfText), [location.pathname, pagePdfText, user])
 
-    return {
-      path,
-      role: user?.role || 'Guest',
-      projectId,
-      pdfText: pagePdfText || undefined
-    }
-  }, [location.pathname, user?.role, pagePdfText])
+  const suggestions = useMemo(() => getElaraSuggestions(user?.role, location.pathname), [location.pathname, user?.role])
+  const scopeCopy = useMemo(() => getElaraScopeCopy(user?.role), [user?.role])
 
   // Fetch project title for header if in project context
   const [projectTitle, setProjectTitle] = useState<string | null>(null)
@@ -184,8 +179,8 @@ export function FloatingAssistantWrapper() {
     }
     setMessages((prev) => [...prev, aiMsg])
 
-    const history = messages.map((m) => ({ role: m.role, content: m.content }))
-    const res = await aiApi.assistant(trimmed, history, getContext())
+    setError(null)
+    const res = await aiApi.assistant(trimmed, buildAssistantHistory(messages), getContext())
 
     if (res.success) {
       const reply = res.data.reply
@@ -194,22 +189,13 @@ export function FloatingAssistantWrapper() {
       )
       setLatestAIId(aiId)
     } else {
-      setMessages((prev) =>
-        prev.map((m) =>
-          m.id === aiId
-            ? { ...m, content: 'Sorry, I encountered an issue. Please try again.' }
-            : m
-        )
-      )
-      setLatestAIId(aiId)
+      setMessages((prev) => prev.filter((m) => m.id !== aiId))
+      setError(res.error || 'Sorry, I encountered an issue. Please try again.')
     }
 
     setSending(false)
   }, [input, sending, messages, getContext])
 
-  const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
-    if (e.key === 'Enter') void send()
-  }
 
   return (
     <>
@@ -264,6 +250,14 @@ export function FloatingAssistantWrapper() {
             </div>
 
             {/* Messages */}
+            <div className="px-4 pt-3">
+              <div className="rounded-2xl border border-[#E5E7EB] dark:border-[#1C1C1C] bg-[#F7F8FA] dark:bg-[#181818] px-3 py-2.5">
+                <p className="text-[11px] text-[#5C6370] dark:text-[#8B8FA8]" style={{ fontFamily: 'var(--font-body)' }}>
+                  {scopeCopy}
+                </p>
+              </div>
+            </div>
+
             <div
               ref={scrollRef}
               className="flex-1 overflow-y-auto px-4 py-4"
@@ -272,10 +266,10 @@ export function FloatingAssistantWrapper() {
                 <div className="h-full flex flex-col items-center justify-center text-center">
                   <ChatCircle size={40} weight="thin" className="text-[#9CA3AF] mb-3" />
                   <p className="text-[14px] text-[#9CA3AF]" style={{ fontFamily: 'var(--font-body)' }}>
-                    Ask Elara anything about Inquisia.
+                    Ask about project submissions, reviews, repository browsing, or this academic workflow.
                   </p>
                   <div className="mt-4 flex flex-wrap gap-2 justify-center">
-                    {['Find ML projects', 'How do I submit?', 'Browse by department'].map((suggestion) => (
+                    {suggestions.map((suggestion) => (
                       <button
                         key={suggestion}
                         onClick={() => { setInput(suggestion); inputRef.current?.focus() }}
@@ -297,12 +291,20 @@ export function FloatingAssistantWrapper() {
               )}
             </div>
 
+            {error && (
+              <div className="px-3 pt-3">
+                <div className="rounded-2xl border border-red-200 bg-red-50 px-3 py-2.5 text-[12px] text-red-600 dark:border-red-900/40 dark:bg-red-950/20 dark:text-red-300" style={{ fontFamily: 'var(--font-body)' }}>
+                  {error}
+                </div>
+              </div>
+            )}
+
             {/* Input */}
             <div className="flex-shrink-0 px-3 pb-3 border-t border-[#E5E7EB] dark:border-[#1C1C1C] pt-3">
               {!user ? (
                 <div className="text-center py-2">
                   <p className="text-[13px] text-[#9CA3AF]">
-                    <Link to="/login" className="text-[#0066FF] hover:underline">Log in</Link> to chat with Elara
+                    <Link to="/login?redirect=%2Felara" className="text-[#0066FF] hover:underline">Log in</Link> to chat with Elara
                   </p>
                 </div>
               ) : (
@@ -321,7 +323,7 @@ export function FloatingAssistantWrapper() {
                         void send()
                       }
                     }}
-                    placeholder="Ask Elara something..."
+                    placeholder="Ask about a project, submission, review, or repository task..."
                     rows={1}
                     className="flex-1 bg-transparent outline-none text-[13px] text-[#0A0A0A] dark:text-[#F5F5F5] placeholder-[#9CA3AF] resize-none overflow-y-auto max-h-[120px]"
                     style={{ fontFamily: 'var(--font-body)', minHeight: '20px', padding: '0px' }}

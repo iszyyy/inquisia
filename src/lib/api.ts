@@ -1,10 +1,12 @@
 /**
  * Inquisia API Client
  * All API calls in the application go through this module.
- * To connect to the real backend, set VITE_API_URL in your .env file.
+ * To connect to the real backend, set NEXT_PUBLIC_API_URL for runtime Docker/Nginx deployments
+ * or VITE_API_URL for local Vite development.
  * All mock data is used when VITE_API_URL is not set or returns errors.
  */
 
+import { APP_CONFIG } from './config'
 import type {
   ApiResponse,
   User,
@@ -23,9 +25,7 @@ import type {
 
 // ─── Config ───────────────────────────────────────────────────────────────────
 
-const BASE_URL =
-  (import.meta as ImportMeta & { env: Record<string, string> }).env?.VITE_API_URL ??
-  (typeof window !== 'undefined' ? `${window.location.protocol}//${window.location.hostname}:3000` : 'http://localhost:3000')
+const BASE_URL = APP_CONFIG.apiUrl
 
 // ─── Core Fetch ───────────────────────────────────────────────────────────────
 

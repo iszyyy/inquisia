@@ -19,7 +19,7 @@ export function AdminLayout() {
   const location = useLocation()
 
   useEffect(() => {
-    if (!isLoading && (!user || user.role !== 'admin')) navigate('/login?return=/admin')
+    if (!isLoading && (!user || user.role !== 'admin')) navigate('/login?redirect=%2Fadmin')
   }, [user, isLoading, navigate])
 
   if (isLoading || !user) return (
