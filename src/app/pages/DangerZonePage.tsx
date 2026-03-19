@@ -1,8 +1,9 @@
 import React, { useState, useEffect } from 'react'
 import { Skull, UserPlus, CheckCircle, XCircle, Eye, EyeSlash } from 'phosphor-react'
+import { APP_CONFIG } from '../../lib/config'
 
 const PORTAL_PASSWORD = '12345678'
-const API_BASE = (typeof import.meta !== 'undefined' && (import.meta as any).env?.VITE_API_URL) || 'http://localhost:3000'
+const API_BASE = APP_CONFIG.apiUrl
 
 export function DangerZonePage() {
     const [unlocked, setUnlocked] = useState(false)
